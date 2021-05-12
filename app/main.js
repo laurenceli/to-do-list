@@ -1,15 +1,8 @@
 const ToDoList = require('./todoList.js');
 const ToDoItem  = require('./todoItem.js');
 
-const todoSwimlane = document.querySelector('.todo-items');
-const pendingSwimlane = document.querySelector('.in-progress-items');
-const completedSwimlane = document.querySelector('.completed-items');
-const todosContainer = document.querySelector('.todos-container');
-const modal = document.getElementById("myModal");
-const btn = document.getElementById("myBtn");
+const modal = document.getElementById("modal-container");
 const span = document.getElementsByClassName("close")[0];
-const modalInputArray = document.getElementById("modal-form").elements;
-const modalForm = document.querySelector('.modal-form');
 
 let toDoList = new ToDoList([]);
 let currentlyEditingId;
@@ -22,6 +15,7 @@ todoForm.addEventListener('submit', function(event){
   }
 });
 
+const modalForm = document.querySelector('.modal-form');
 modalForm.addEventListener('submit', function(event){
   event.preventDefault();
   if (event.target.classList.contains('modal-form')) {
@@ -29,29 +23,28 @@ modalForm.addEventListener('submit', function(event){
   }
 });
 
+const todosContainer = document.querySelector('.todos-container');
 todosContainer.addEventListener('click', function(event) {
   if (event.target.classList.contains('delete-button')) {
     deleteItemOnClick();
-    addToLocalStorage(toDoList);
+    addToStorageAndRender(toDoList);
   }
 
   if (event.target.classList.contains('edit-button')) {
     editItemOnClick();
-    addToLocalStorage(toDoList);
+    addToStorageAndRender(toDoList);
   }
 });
 
-getFromLocalStorage();
+getStoredListAndRender();
 
 function addToDoOnSubmit(){
   const formInputs = parseThenClearInputForm();
   const toDoItem = generateNewToDoItem(formInputs);
 
   toDoList.addItem(toDoItem);
-  console.log(toDoItem)
 
-  //renderTodos(toDoList);
-  addToLocalStorage(toDoList);
+  addToStorageAndRender(toDoList);
 }
 
 function parseThenClearInputForm(){
@@ -81,10 +74,11 @@ function generateNewToDoItem(inputs) {
 function editToDoOnSubmit(){
   const formInputs = parseThenClearEditForm();
   editToDoItem(formInputs);
-  addToLocalStorage(toDoList);
+  addToStorageAndRender(toDoList);
 }
 
 function parseThenClearEditForm(){
+  const modalInputArray = document.getElementById("modal-form").elements;
   let formValues = [];
   // [length - 1] because last element is the button
   for(let i = 0; i < modalInputArray.length - 1; i++){ 
@@ -108,69 +102,58 @@ function editToDoItem(inputs){
   currentlyEditingId = '';
 }
 
-function addToLocalStorage(toDoList) {
-  console.log(`Saving to local: ${JSON.stringify(toDoList)}`);
+function addToStorageAndRender(toDoList) {
   localStorage.setItem('todos', JSON.stringify(toDoList));
-  console.log(`Rendering: ${JSON.stringify(toDoList)}`);
   renderTodos(toDoList);
 }
 
-function getFromLocalStorage() {
+function getStoredListAndRender() {
   const reference = localStorage.getItem('todos');
-  console.log(`Getting from local: ${JSON.stringify(reference)}`);
   if (reference) {
     toDoList = new ToDoList(JSON.parse(reference).todoItems)
-    console.log(`Rendering: ${JSON.stringify(toDoList)}`);
     renderTodos(toDoList);
   }
 }
 
 function renderTodos(toDoList) {
+  const todoSwimlane = document.querySelector('.todo-items');
+  const pendingSwimlane = document.querySelector('.in-progress-items');
+  const completedSwimlane = document.querySelector('.completed-items');
+
   todoSwimlane.innerHTML = '';
   pendingSwimlane.innerHTML = '';
   completedSwimlane.innerHTML = '';
+
   toDoList.todoItems.forEach(function(item) {
-    const li = document.createElement('li');
-    li.setAttribute('class', 'item');
-    li.setAttribute('data-key', item.id);
+    const listItem = document.createElement('li');
+    listItem.setAttribute('class', 'item');
+    listItem.setAttribute('data-id', item.id);
+
+    const todoHtml = `
+      <div class="todo-title">${item.title}</div>
+      <div class="todo-description">${item.description}</div>
+      <div class="todo-due-date">${item.dueDate}</div>
+      <button class="edit-button todo-button">...</button>
+      <button class="delete-button todo-button">X</button>
+    `;
+    listItem.innerHTML = todoHtml
 
     switch(item.status) {
       case 'To Do': 
       case 'todo':
-        li.innerHTML = `
-          <div class="todo-title">${item.title}</div>
-          <div class="todo-description">${item.description}</div>
-          <div class="todo-due-date">${item.dueDate}</div>
-          <button class="edit-button todo-button">...</button>
-          <button class="delete-button todo-button">X</button>
-        `;
-        todoSwimlane.append(li);
+        todoSwimlane.append(listItem);
       break;
       case 'inprogress': 
-        li.innerHTML = `
-          <div class="todo-title">${item.title}</div>
-          <div class="todo-description">${item.description}</div>
-          <div class="todo-due-date">${item.dueDate}</div>
-          <button class="edit-button todo-button">...</button>
-          <button class="delete-button todo-button">X</button>
-        `;
-        pendingSwimlane.append(li);
+        pendingSwimlane.append(listItem);
       break;
       case 'done':
-        li.innerHTML = `
-          <div class="todo-title">${item.title}</div>
-          <div class="todo-description">${item.description}</div>
-          <div class="todo-due-date">${item.dueDate}</div>
-          <button class="edit-button todo-button">...</button>
-          <button class="delete-button todo-button">X</button>
-        `;
-        completedSwimlane.append(li);
+        completedSwimlane.append(listItem);
     }
   });
 }
 
 function deleteItemOnClick(){
-    const itemId = event.target.parentElement.getAttribute('data-key');
+    const itemId = event.target.parentElement.getAttribute('data-id');
     toDoList.deleteItem(itemId);
 }
 
@@ -180,7 +163,8 @@ function editItemOnClick(){
 }
 
 function populateModal(){
-  const itemId = event.target.parentElement.getAttribute('data-key');
+  const modalInputArray = document.getElementById("modal-form").elements;
+  const itemId = event.target.parentElement.getAttribute('data-id');
   const item = toDoList.getItemById(itemId);
   modalInputArray[0].value = item.title;
   modalInputArray[1].value = item.description;
