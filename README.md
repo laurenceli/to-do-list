@@ -1,3 +1,3 @@
 # to-do-list
 
-Nothing fancy, just run open up index.html ✨
+Nothing fancy, just open up index.html ✨
